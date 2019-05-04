@@ -1,0 +1,162 @@
+Webpack:
+
+1. What does it do?
+   a. It bundles our code/assets together, i.e it can produce a single JS file , single css and single .png
+    directory for all the files we have in our code
+   b. Manages the dependencies: makes sure that code that is loading first is loading first,
+    i.e the files that the file is run deoends on are loaded first.
+
+2. Default behaviour
+   npm install --save-dev webpack webpack-cli
+   npm start => webpack
+   This will dasically run webpack, which looks for index.js file and then complies it into a minified folder and adds it into a dist/main.js.
+   Include this main.js in your html and it should work.
+   Uses imports and exports feature of es6 and loads dependency according without you worrying about the order.
+
+3. Webpack config file
+   A js file as config file which exports a json object. Example,
+   module.exports = {
+        entry: "./src/index.js",
+        devtool: "none",
+        mode: 'development',
+        output: {
+            filename: "main.js",
+            path: path.resolve(__dirname, "dist")
+        }
+   }
+   devtool: none , when you give this you will not see the eval stuff that webpack does instead you will JS.
+   See main.js in both mode, it really clearly loads every js stuff into one file.
+
+4. Loaders
+   => npm install --save-dev style-loader css-loader
+   module: {
+        rules: [
+            {
+                test: /\.css$/,
+                use: ["style-loader", "css-loader"]
+            }
+        ]
+    }
+
+    A config is provided above for .css files, we basically have to convert the css files into JS (css-loader) and then inject
+    it into the dom (style-loader).
+    Note that ["style-loader", "css-loader"] is loaded in reverse order. When style0loader runs, it basically takes the
+    minified css and injects into the index.html even without us declaring this in the html (basicaly adds a style tag),
+    you can see this in browser on inspect.
+
+5. SASS loader
+   => npm install --save-dev scss-loader node-sass
+   => npm install --save-dev bootstrap
+
+   We imported the bootstarp into node modules and imported this into main.scss and then the usual npm start.
+
+6. CACHE Bustin and Plugins
+   How do we make sure that browsers don't cache the css or js bundles.
+   When we just a normal reload on browsers, we can see in the networks tab (preferrably css) that some contents are loaded from CSS.
+   So we can use conentHash in webpack config
+   => filename: "main.[contentHash].js"
+   But this will generate a new main file each time and how to tell out code to consider this? Via plugins.
+
+   So we need a plugin to genearte new HTML file generator and a plugin to cleanup the generated files.
+
+   HtmlWebpackPlugin (https://webpack.js.org/plugins/html-webpack-plugin/)
+   => npm install --save-dev html-webpack-plugin
+
+7. Webpack dev server (dev and prod)
+   => npm install --save-dev webpack-merge  //this is used to merge ultiple config files
+   We can write separate files for prod, dev and the ones in common and merge them with common using merge.
+
+   => npm install --save-dev webpack-dev-server
+
+8. HTML loader, File Loader and Clean webpack
+   HTML loader:
+   => npm install --save-dev html-loader
+   Basically html-loader checks the <img> tags and requires the image. If you build after this, its going to
+   fail since webpack does not know how to read this.
+   Hence we use a file loader.
+
+            ERROR in ./src/assets/webpack.svg 1:0
+            Module parse failed: Unexpected token (1:0)
+            You may need an appropriate loader to handle this file type.
+
+    File Loader
+    => npm install --save-dev file-loader
+
+        {
+            test: /\.(svg|png|jpg|gif)$/,
+            use: {
+                loader: "file-loader",
+                options: {
+                name: "[name].[hash].[ext]",
+                outputPath: "imgs"
+                }
+            }
+        }
+
+    The above config just finds the files .svg, png etc and adds then into dist/imgs folder with a hash.
+    This path is hardcoded into src in index.html . How cool that webpack takes care of this for you.
+
+    Clean Webpack
+    => npm install --save-dev clean-webpack-plugin
+    Used to clear the bundled js files with hash content in dist folder. We need this in webpack.prod.js only.
+
+9. Extract CSS and minify HTML/CSS/JS
+   Now when you load the webpage you see that the html contents are loaded first and then the css content
+   which gives bad user effect. So what we now have to do is to add the bundled css early.
+
+   mini-css-extract-plugin
+   => npm install --save-dev mini-css-extract-plugin
+
+   style-loader is causing this issue, so lets keep this in dev and fix the problem in pord.
+   When we use this plugin, we can see that <link> tag is added in the head for css stylesheet with a hash.
+
+   But this isn't minified yet so we must use optimize-css-assets-webpack-plugin.
+   => npm install --save-dev optimize-css-assets-webpack-plugin
+
+   We add a new optimization field to acheive this in webpack.prod.
+
+   Using OptimizeCssAssetsPlugin() as minimizer creates a problem in mode="Production". By default,
+   minimizer is enabled for JS in production mode and we adding this overrides that configuration hence we
+   see that our JS files are no more minimized.
+
+   So we add back the terser-webpack-plugin (instaled as dependency with webpack) which was used by webpack
+   before. Things should be back now.
+
+   To minify the generated index.html, we just need to use out html-webpack-plugin and pass in minify options,
+   minify: {
+        removeAttributeQuotes: true,
+        collapseWhitespace: true,
+        removeComments: true
+    }
+
+    After all this you can see that your dev and prod modes load instantly.
+    Note: in dev mode => browser => sources => main.bundle.js
+    Doesn't look like we are storing main.bundle.js in dist so it should be stored in memory by the webpack
+    server.
+
+    That's all folks!
+
+
+
+RESOURCE:
+https://www.youtube.com/watch?v=3On5Z0gjf4U&list=PLblA84xge2_zwxh3XJqy6UVxS60YdusY8
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ERRORS:
+
+1. ERROR in Entry module not found: Error: Can't resolve './src' in '/Users/kirankumar/Documents/Tutorials/JS/WEBPACK/JS_EXMAPLES/webpack-demo-app'
+   => index.js is missing in the src file (got this on "npm start"). ["start": "webpack"]
